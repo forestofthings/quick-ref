@@ -1,18 +1,32 @@
+import { FileSystemDirectoryHandle } from 'fs';
+
 let selectedFiles: File[] = [];
 let selectedFileHandles: FileSystemFileHandle[] = [];
+let currentDirectoryHandle: FileSystemDirectoryHandle | null = null;
 
-const createFileInput = (): Promise<File[]> => {
+const createFileInput = (): Promise<{ files: File[], directoryPath?: string, directoryName?: string }> => {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
     input.accept = '.md';
-    input.webkitdirectory = true; // Allow directory selection
+    input.webkitdirectory = true;
 
     input.onchange = () => {
       const files = Array.from(input.files || [])
-        .filter(file => file.name.endsWith('.md')); // Only include markdown files
-      resolve(files);
+        .filter(file => file.name.endsWith('.md'));
+      
+      // Try to get directory name from the first file's path
+      let directoryPath, directoryName;
+      if (files.length > 0 && files[0].webkitRelativePath) {
+        const parts = files[0].webkitRelativePath.split('/');
+        if (parts.length > 1) {
+          directoryName = parts[0];
+          directoryPath = files[0].webkitRelativePath.split('/')[0];
+        }
+      }
+      
+      resolve({ files, directoryPath, directoryName });
     };
 
     input.click();
@@ -47,14 +61,12 @@ export const listFiles = async (): Promise<string[]> => {
 };
 
 export const readFile = async (filePath: string): Promise<string> => {
-  // Try File System Access API first
   const fileHandle = selectedFileHandles.find(handle => handle.name === filePath);
   if (fileHandle) {
     const file = await fileHandle.getFile();
     return file.text();
   }
 
-  // Fallback to regular File API
   const file = selectedFiles.find(f => f.name === filePath);
   if (!file) {
     throw new Error(`File not found: ${filePath}`);
@@ -62,50 +74,51 @@ export const readFile = async (filePath: string): Promise<string> => {
   return file.text();
 };
 
-export const selectFiles = async (): Promise<string[]> => {
+export const selectFiles = async (savedPath?: string): Promise<{
+  files: string[];
+  directoryPath?: string;
+  directoryName?: string;
+}> => {
   try {
-    // Check if File System Access API is available
-    if ('showOpenFilePicker' in window) {
-      const handles = await window.showOpenFilePicker({
-        multiple: true,
-        types: [{
-          description: 'Markdown files',
-          accept: {
-            'text/markdown': ['.md']
-          }
-        }],
-        // Allow directory selection
-        startIn: 'documents'
-      });
-
-      const allFiles: FileSystemFileHandle[] = [];
+    if ('showDirectoryPicker' in window) {
+      let dirHandle: FileSystemDirectoryHandle;
       
-      for (const handle of handles) {
-        if (handle.kind === 'directory') {
-          const filesInDir = await getAllFilesInDirectory(handle);
-          allFiles.push(...filesInDir);
-        } else if (handle.name.endsWith('.md')) {
-          allFiles.push(handle);
-        }
+      if (savedPath && currentDirectoryHandle) {
+        dirHandle = currentDirectoryHandle;
+      } else {
+        dirHandle = await window.showDirectoryPicker({
+          startIn: 'documents',
+        });
+        currentDirectoryHandle = dirHandle;
       }
-      
-      selectedFileHandles = allFiles;
-      selectedFiles = []; // Clear regular files when using handles
-      return allFiles.map(handle => handle.name);
+
+      const files = await getAllFilesInDirectory(dirHandle);
+      selectedFileHandles = files;
+      selectedFiles = [];
+
+      return {
+        files: files.map(handle => handle.name),
+        directoryPath: dirHandle.name,
+        directoryName: dirHandle.name
+      };
     }
 
-    // Fallback to regular file input
-    const files = await createFileInput();
+    const { files, directoryPath, directoryName } = await createFileInput();
     selectedFiles = files;
-    selectedFileHandles = []; // Clear handles when using regular files
-    return files.map(file => file.name);
+    selectedFileHandles = [];
+    return {
+      files: files.map(file => file.name),
+      directoryPath,
+      directoryName
+    };
   } catch (error) {
     console.error('Error selecting files:', error);
-    return [];
+    return { files: [] };
   }
 };
 
 export const clearSelectedFiles = () => {
   selectedFiles = [];
   selectedFileHandles = [];
+  currentDirectoryHandle = null;
 };

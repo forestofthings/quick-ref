@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { searchFiles, SearchResult } from '../utils/search';
 
+interface FavoriteFolder {
+  path: string;
+  name: string;
+  lastUsed: number;
+}
+
 interface SearchContextType {
   query: string;
   setQuery: (query: string) => void;
@@ -17,9 +23,24 @@ interface SearchContextType {
   clearResults: () => void;
   contextWords: number;
   setContextWords: (value: number) => void;
+  favoriteFolders: FavoriteFolder[];
+  addFavoriteFolder: (path: string, name: string) => void;
+  removeFavoriteFolder: (path: string) => void;
+  updateFavoriteLastUsed: (path: string) => void;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
+
+// Load favorites from localStorage
+const loadFavorites = (): FavoriteFolder[] => {
+  const saved = localStorage.getItem('quickRefFavorites');
+  return saved ? JSON.parse(saved) : [];
+};
+
+// Save favorites to localStorage
+const saveFavorites = (favorites: FavoriteFolder[]) => {
+  localStorage.setItem('quickRefFavorites', JSON.stringify(favorites));
+};
 
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
@@ -29,9 +50,31 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [isSearching, setIsSearching] = useState(false);
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [wholeWord, setWholeWord] = useState(false);
-  const [contextWords, setContextWords] = useState(20); // Changed default to 20
+  const [contextWords, setContextWords] = useState(20);
+  const [favoriteFolders, setFavoriteFolders] = useState<FavoriteFolder[]>(loadFavorites);
 
-  // Debounced search effect
+  // Save favorites whenever they change
+  useEffect(() => {
+    saveFavorites(favoriteFolders);
+  }, [favoriteFolders]);
+
+  const addFavoriteFolder = (path: string, name: string) => {
+    setFavoriteFolders(prev => {
+      if (prev.some(f => f.path === path)) return prev;
+      return [...prev, { path, name, lastUsed: Date.now() }];
+    });
+  };
+
+  const removeFavoriteFolder = (path: string) => {
+    setFavoriteFolders(prev => prev.filter(f => f.path !== path));
+  };
+
+  const updateFavoriteLastUsed = (path: string) => {
+    setFavoriteFolders(prev => 
+      prev.map(f => f.path === path ? { ...f, lastUsed: Date.now() } : f)
+    );
+  };
+
   useEffect(() => {
     const searchTimeout = setTimeout(async () => {
       if (query.trim() && selectedFiles.length > 0) {
@@ -51,7 +94,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       } else {
         setResults([]);
       }
-    }, 300); // 300ms debounce delay
+    }, 300);
 
     return () => clearTimeout(searchTimeout);
   }, [query, selectedFiles, caseSensitive, wholeWord, contextWords]);
@@ -59,7 +102,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const performSearch = async () => {
     if (!query.trim() || selectedFiles.length === 0) return;
     
-    // Add to search history if not already present
     if (!searchHistory.includes(query)) {
       setSearchHistory(prev => [query, ...prev].slice(0, 10));
     }
@@ -86,7 +128,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setWholeWord,
         clearResults,
         contextWords,
-        setContextWords
+        setContextWords,
+        favoriteFolders,
+        addFavoriteFolder,
+        removeFavoriteFolder,
+        updateFavoriteLastUsed
       }}
     >
       {children}
