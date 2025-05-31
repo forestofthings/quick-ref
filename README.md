@@ -1,6 +1,6 @@
 # quickRef
 
-Search through markdown files with instant results and contextual previews.
+Search through selected markdown files with instant results and contextual previews.
 
 This project was developed with the assistance of bolt.new and Claude.
 
