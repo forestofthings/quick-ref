@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useSearch } from '../context/SearchContext';
-import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon, MessageSquare, ArrowRight } from 'lucide-react';
 import { HighlightedText } from './HighlightedText';
 
 const SearchResults: React.FC = () => {
-  const { results, query, isSearching } = useSearch();
+  const { results, query, isSearching, isInterviewMode } = useSearch();
   const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>({});
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [isDocListExpanded, setIsDocListExpanded] = useState(true);
 
   const toggleFileExpansion = (filePath: string) => {
     setExpandedFiles(prev => ({
@@ -48,7 +50,7 @@ const SearchResults: React.FC = () => {
     );
   }
 
-  // Group results by file
+  // Group and sort results by file
   const resultsByFile = results.reduce((acc, result) => {
     if (!acc[result.file]) {
       acc[result.file] = [];
@@ -57,21 +59,72 @@ const SearchResults: React.FC = () => {
     return acc;
   }, {} as Record<string, typeof results>);
 
+  // Sort files by number of matches (descending)
+  const sortedFiles = Object.entries(resultsByFile)
+    .sort(([, aResults], [, bResults]) => bResults.length - aResults.length);
+
+  const uniqueDocuments = Object.keys(resultsByFile).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4">
         <h3 className="text-lg font-medium">
-          Found {results.length} match{results.length !== 1 ? 'es' : ''} for "{query}"
+          Found {results.length} match{results.length !== 1 ? 'es' : ''} for "{query}" in {uniqueDocuments} document{uniqueDocuments !== 1 ? 's' : ''}
         </h3>
+
+        {/* Collapsible Document Navigation */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setIsDocListExpanded(!isDocListExpanded)}
+            className="w-full flex items-center justify-between p-4 text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            <span>Documents with matches</span>
+            {isDocListExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+          
+          {isDocListExpanded && (
+            <div className="p-4 pt-0">
+              <div className="flex flex-col gap-2">
+                {sortedFiles.map(([file, fileResults]) => (
+                  <button
+                    key={file}
+                    onClick={() => {
+                      setSelectedFile(file);
+                      setExpandedFiles(prev => ({ ...prev, [file]: true }));
+                      const element = document.getElementById(`file-${file}`);
+                      if (element) element.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left
+                              ${selectedFile === file
+                        ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
+                        : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}
+                  >
+                    <FileText className="h-4 w-4 flex-shrink-0" />
+                    <span className="break-all">{file}</span>
+                    <span className="text-gray-500 dark:text-gray-400 ml-auto flex-shrink-0">
+                      ({fileResults.length})
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
-        {Object.entries(resultsByFile).map(([file, fileResults]) => {
-          const isExpanded = expandedFiles[file] !== false; // Default to expanded
+        {sortedFiles.map(([file, fileResults]) => {
+          const isExpanded = expandedFiles[file] !== false;
           
           return (
             <div 
               key={file}
+              id={`file-${file}`}
               className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm transition-all duration-200"
             >
               <button
@@ -100,6 +153,12 @@ const SearchResults: React.FC = () => {
                       key={idx}
                       className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition"
                     >
+                      {isInterviewMode && result.speaker && (
+                        <div className="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">
+                          <MessageSquare className="h-4 w-4" />
+                          <span className="font-medium">{result.speaker}</span>
+                        </div>
+                      )}
                       <HighlightedText 
                         text={result.context} 
                         searchTerm={query} 
