@@ -1,6 +1,8 @@
 # quickRef
 
-A powerful local markdown file search tool built with React and TypeScript. Search through your markdown documentation with real-time results, context highlighting, and advanced search features.
+A local markdown file search tool built with React and TypeScript. Search through your markdown documentation with real-time results, context highlighting, and advanced search features.
+
+This project was developed with the assistance of bolt.new and Claude.
 
 ## Features
 
