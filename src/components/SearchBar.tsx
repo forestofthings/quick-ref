@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useSearch } from '../context/SearchContext';
-import { Search, X, Clock, Settings, CheckSquare } from 'lucide-react';
+import { Search, X, Clock, Settings } from 'lucide-react';
 
 const SearchBar: React.FC = () => {
   const {

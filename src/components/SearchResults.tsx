@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useSearch } from '../context/SearchContext';
-import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon, MessageSquare, ArrowRight } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon } from 'lucide-react';
 import { HighlightedText } from './HighlightedText';
 
 const SearchResults: React.FC = () => {
-  const { results, query, isSearching, isInterviewMode } = useSearch();
+  const { results, query, isSearching } = useSearch();
   const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isDocListExpanded, setIsDocListExpanded] = useState(true);
@@ -153,12 +153,6 @@ const SearchResults: React.FC = () => {
                       key={idx}
                       className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition"
                     >
-                      {isInterviewMode && result.speaker && (
-                        <div className="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">
-                          <MessageSquare className="h-4 w-4" />
-                          <span className="font-medium">{result.speaker}</span>
-                        </div>
-                      )}
                       <HighlightedText 
                         text={result.context} 
                         searchTerm={query} 

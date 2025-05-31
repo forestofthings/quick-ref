@@ -14,7 +14,6 @@ This project was developed with the assistance of bolt.new and Claude.
   - Case-sensitive search
   - Whole word matching
   - Adjustable context size (10-200 words)
-  - Interview transcript mode with speaker detection
 - Dark mode support
 - Keyboard shortcuts:
   - Ctrl/Cmd + Enter to search

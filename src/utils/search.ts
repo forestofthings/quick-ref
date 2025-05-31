@@ -75,9 +75,17 @@ const searchFile = async (
     const originalContent = content;
     
     let match;
+    let lastMatchEnd = 0;
+    const minDistance = 50; // Minimum characters between matches to consider them unique
+
     while ((match = regex.exec(searchContent)) !== null) {
       const matchIndex = match.index;
       const matchLength = match[0].length;
+
+      // Skip if this match is too close to the previous one
+      if (matchIndex - lastMatchEnd < minDistance) {
+        continue;
+      }
       
       results.push({
         file: filePath,
@@ -85,6 +93,8 @@ const searchFile = async (
         context: extractContext(originalContent, matchIndex, matchLength, contextWords),
         match: match[0]
       });
+
+      lastMatchEnd = matchIndex + matchLength;
     }
     
     return results;
