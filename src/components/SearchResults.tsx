@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSearch } from '../context/SearchContext';
-import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, FileBadge, SearchIcon, Download } from 'lucide-react';
 import { HighlightedText } from './HighlightedText';
+import { generateMarkdown, downloadMarkdown } from '../utils/export';
 
 const SearchResults: React.FC = () => {
   const { results, query, isSearching } = useSearch();
@@ -14,6 +15,24 @@ const SearchResults: React.FC = () => {
       ...prev,
       [filePath]: !prev[filePath]
     }));
+  };
+
+  const openFileAtLine = async (filePath: string, line: number) => {
+    try {
+      await window.xdg_open(`${filePath}:${line}`);
+    } catch (error) {
+      console.error('Error opening file:', error);
+    }
+  };
+
+  const handleExport = () => {
+    if (!query || !results.length) return;
+    
+    const markdown = generateMarkdown(query, results);
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `search-results-${query.toLowerCase().replace(/\s+/g, '-')}-${timestamp}.md`;
+    
+    downloadMarkdown(markdown, filename);
   };
 
   // Show initial state when no query
@@ -68,9 +87,20 @@ const SearchResults: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-medium">
-          Found {results.length} match{results.length !== 1 ? 'es' : ''} for "{query}" in {uniqueDocuments} document{uniqueDocuments !== 1 ? 's' : ''}
-        </h3>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">
+            Found {results.length} match{results.length !== 1 ? 'es' : ''} for "{query}" in {uniqueDocuments} document{uniqueDocuments !== 1 ? 's' : ''}
+          </h3>
+          
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg
+                     bg-indigo-600 text-white hover:bg-indigo-700 transition"
+          >
+            <Download className="h-4 w-4" />
+            <span>Export Results</span>
+          </button>
+        </div>
 
         {/* Collapsible Document Navigation */}
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -151,7 +181,8 @@ const SearchResults: React.FC = () => {
                   {fileResults.map((result, idx) => (
                     <div 
                       key={idx}
-                      className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition"
+                      className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition cursor-pointer"
+                      onClick={() => openFileAtLine(file, result.line)}
                     >
                       <HighlightedText 
                         text={result.context} 
