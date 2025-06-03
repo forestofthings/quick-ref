@@ -2,7 +2,7 @@ import { FileSystemDirectoryHandle } from 'fs';
 
 let selectedFiles: File[] = [];
 let selectedFileHandles: FileSystemFileHandle[] = [];
-let currentDirectoryHandle: FileSystemDirectoryHandle | null = null;
+let directoryHandles: Map<string, FileSystemDirectoryHandle> = new Map();
 
 const createFileInput = (): Promise<{ files: File[], directoryPath?: string, directoryName?: string }> => {
   return new Promise((resolve) => {
@@ -83,13 +83,16 @@ export const selectFiles = async (savedPath?: string): Promise<{
     if ('showDirectoryPicker' in window) {
       let dirHandle: FileSystemDirectoryHandle;
       
-      if (savedPath && currentDirectoryHandle) {
-        dirHandle = currentDirectoryHandle;
+      if (savedPath && directoryHandles.has(savedPath)) {
+        // Use the saved directory handle for this path
+        dirHandle = directoryHandles.get(savedPath)!;
       } else {
+        // Get a new directory handle
         dirHandle = await window.showDirectoryPicker({
           startIn: 'documents',
         });
-        currentDirectoryHandle = dirHandle;
+        // Save the handle with its path
+        directoryHandles.set(dirHandle.name, dirHandle);
       }
 
       const files = await getAllFilesInDirectory(dirHandle);
@@ -120,5 +123,5 @@ export const selectFiles = async (savedPath?: string): Promise<{
 export const clearSelectedFiles = () => {
   selectedFiles = [];
   selectedFileHandles = [];
-  currentDirectoryHandle = null;
+  directoryHandles.clear();
 };
